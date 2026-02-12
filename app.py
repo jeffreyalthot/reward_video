@@ -1,20 +1,14 @@
 #!/usr/bin/env python3
-"""Terminal app that automates a rewarded-video flow for AdMob-like usage."""
+"""Terminal app for rewarded-video flow simulation with AdMob compliance guardrails."""
 
 from __future__ import annotations
 
+import importlib
 import os
 import random
 import subprocess
 import time
 from dataclasses import dataclass
-
-
-try:
-    # Optional dependency: demonstrates Google SDK usage for API initialization.
-    from googleapiclient.discovery import build  # type: ignore
-except Exception:  # dependency may not be installed in minimal environments
-    build = None
 
 
 @dataclass
@@ -32,6 +26,7 @@ class RewardVideoTerminalApp:
         runs: int = 10,
         watch_seconds: int = 5,
         share_probability: float = 0.75,
+        enforce_real_admob: bool = False,
     ) -> None:
         self.app_id = app_id
         self.ad_unit_id = ad_unit_id
@@ -39,15 +34,22 @@ class RewardVideoTerminalApp:
         self.runs = runs
         self.watch_seconds = watch_seconds
         self.share_probability = share_probability
+        self.enforce_real_admob = enforce_real_admob
         self.stats = AppStats()
+
+    def _load_google_build(self):
+        module = importlib.import_module("googleapiclient.discovery")
+        return getattr(module, "build", None)
 
     def setup_google_sdk(self) -> None:
         """Initialize Google SDK client when available.
 
-        Note: rewarded ad serving is handled by mobile SDKs. In terminal mode,
-        we only validate SDK access and keep a simulated playback flow.
+        Note: real rewarded ad serving and view counting are handled only by
+        Android/iOS SDK callbacks. Terminal mode can never create real AdMob views.
         """
-        if build is None:
+        try:
+            build = self._load_google_build()
+        except ModuleNotFoundError:
             print("[INFO] google-api-python-client non installé -> mode simulation.")
             return
 
@@ -62,6 +64,33 @@ class RewardVideoTerminalApp:
             print(f"[WARN] Initialisation SDK Google impossible: {err}")
             print("[INFO] Poursuite en mode simulation locale.")
 
+    def validate_real_admob_requirements(self) -> None:
+        """Fail-fast when user asks for real AdMob counting in terminal mode."""
+        if not self.enforce_real_admob:
+            return
+
+        print("\n[MODE] Vérification REAL_ADMOB_MODE activée")
+        missing_values = []
+        if not self.app_id:
+            missing_values.append("ADMOB_APP_ID")
+        if not self.ad_unit_id:
+            missing_values.append("ADMOB_REWARDED_AD_UNIT_ID")
+
+        if missing_values:
+            missing = ", ".join(missing_values)
+            raise RuntimeError(
+                "Configuration incomplète pour l'intégration mobile AdMob: "
+                f"{missing}."
+            )
+
+        raise RuntimeError(
+            "REAL_ADMOB_MODE ne peut pas être validé depuis une app terminal. "
+            "Pour qu'une vidéo soit considérée *vraiment vue* par AdMob, "
+            "il faut utiliser le SDK Mobile Ads Android/iOS avec les callbacks "
+            "officiels (onUserEarnedReward/onAdDismissedFullScreenContent) "
+            "et laisser AdMob compter l'impression côté SDK."
+        )
+
     def notify(self, message: str) -> None:
         print(f"\n[NOTIFICATION] {message}")
         try:
@@ -71,7 +100,7 @@ class RewardVideoTerminalApp:
 
     def play_reward_video(self) -> bool:
         """Simulate watching a rewarded video and auto decide share/reject."""
-        self.notify("Lecture automatique d'une vidéo reward...")
+        self.notify("Lecture automatique d'une vidéo reward (simulation locale)...")
         for second in range(1, self.watch_seconds + 1):
             print(f"  ▶ Vidéo en cours... {second}/{self.watch_seconds}s", end="\r", flush=True)
             time.sleep(1)
@@ -83,6 +112,7 @@ class RewardVideoTerminalApp:
         print(f"App ID      : {self.app_id or 'NON CONFIGURÉ'}")
         print(f"Ad Unit ID  : {self.ad_unit_id or 'NON CONFIGURÉ'}")
         print("----------------------------------------")
+        self.validate_real_admob_requirements()
         self.setup_google_sdk()
 
         for index in range(1, self.runs + 1):
@@ -90,16 +120,16 @@ class RewardVideoTerminalApp:
             shared = self.play_reward_video()
             if shared:
                 self.stats.shares += 1
-                print("✅ SHARE envoyé automatiquement dans le terminal.")
+                print("✅ SHARE simulé automatiquement dans le terminal.")
             else:
                 self.stats.rejects += 1
-                print("❌ REJECT enregistré automatiquement dans le terminal.")
+                print("❌ REJECT simulé automatiquement dans le terminal.")
 
             print(
-                f"Compteurs => share: {self.stats.shares} | reject: {self.stats.rejects}"
+                f"Compteurs (simulation) => share: {self.stats.shares} | reject: {self.stats.rejects}"
             )
 
-        print("\n=== Résultat final ===")
+        print("\n=== Résultat final (simulation) ===")
         print(f"Nombre de share : {self.stats.shares}")
         print(f"Nombre de reject: {self.stats.rejects}")
 
@@ -112,5 +142,6 @@ if __name__ == "__main__":
         runs=int(os.getenv("RUNS", "5")),
         watch_seconds=int(os.getenv("WATCH_SECONDS", "3")),
         share_probability=float(os.getenv("SHARE_PROBABILITY", "0.7")),
+        enforce_real_admob=os.getenv("REAL_ADMOB_MODE", "false").lower() == "true",
     )
     app.run()

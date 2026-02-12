@@ -30,6 +30,7 @@ Variables principales:
 - `RUNS` (nombre de cycles automatiques)
 - `WATCH_SECONDS` (durée simulée de lecture vidéo)
 - `SHARE_PROBABILITY` (probabilité automatique de share)
+- `REAL_ADMOB_MODE` (mettre `true` pour forcer une erreur explicite si vous tentez de valider de “vraies vues” depuis le terminal)
 
 ## Exécution
 
@@ -43,7 +44,13 @@ python3 app.py
 2. Tente d'initialiser le client Google AdMob via SDK (`google-api-python-client`).
 3. Déclenche automatiquement une notification terminal / desktop pour jouer une vidéo reward.
 4. Simule la lecture vidéo.
-5. À la fin de la vidéo, enregistre automatiquement un `share` ou `reject`.
+5. À la fin de la vidéo, enregistre automatiquement un `share` ou `reject` local.
 6. Affiche les compteurs en continu et un récapitulatif final.
 
-> Note: la diffusion réelle d'une vidéo rewarded AdMob nécessite le SDK mobile (Android/iOS). Cette version fournit un flux terminal automatisé avec intégration de configuration Google.
+## Important: vues AdMob “réelles”
+
+Une vue rewarded **réellement comptée par AdMob** ne peut pas être générée par ce script terminal.
+
+Pour qu'AdMob considère la vidéo comme vue, il faut intégrer le SDK Mobile Ads dans une app Android/iOS, charger une rewarded ad, puis laisser les callbacks officiels (`onAdShowedFullScreenContent`, `onUserEarnedReward`, `onAdDismissedFullScreenContent`) piloter le flux côté client mobile.
+
+Ce projet reste donc un simulateur de flux local.
