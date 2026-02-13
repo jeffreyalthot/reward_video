@@ -1,9 +1,6 @@
 # reward_video
 
-Application terminal qui automatise un scénario **rewarded video** avec configuration AdMob (App ID / Ad Unit ID) et initialisation du SDK Google (client API), puis affiche automatiquement les compteurs:
-
-- nombre de `share`
-- nombre de `reject`
+Application terminal pour piloter un flux **rewarded video** avec actions utilisateur réelles (pas de tirage aléatoire) et journalisation des événements.
 
 ## Installation
 
@@ -27,10 +24,10 @@ Variables principales:
 - `ADMOB_APP_ID`
 - `ADMOB_REWARDED_AD_UNIT_ID`
 - `GOOGLE_API_KEY`
-- `RUNS` (nombre de cycles automatiques)
-- `WATCH_SECONDS` (durée simulée de lecture vidéo)
-- `SHARE_PROBABILITY` (probabilité automatique de share)
-- `REAL_ADMOB_MODE` (mettre `true` pour forcer une erreur explicite si vous tentez de valider de “vraies vues” depuis le terminal)
+- `RUNS` (nombre de cycles)
+- `WATCH_SECONDS` (durée d'attente pendant le visionnage)
+- `REWARDED_VIDEO_URL` (optionnel: URL à ouvrir automatiquement)
+- `EVENTS_LOG_FILE` (optionnel: fichier JSONL des événements, par défaut `events_log.jsonl`)
 
 ## Exécution
 
@@ -40,17 +37,14 @@ python3 app.py
 
 ## Fonctionnement
 
-1. Démarre l'app terminal et affiche la config.
-2. Tente d'initialiser le client Google AdMob via SDK (`google-api-python-client`).
-3. Déclenche automatiquement une notification terminal / desktop pour jouer une vidéo reward.
-4. Simule la lecture vidéo.
-5. À la fin de la vidéo, enregistre automatiquement un `share` ou `reject` local.
-6. Affiche les compteurs en continu et un récapitulatif final.
+1. Démarre l'app terminal et affiche la configuration.
+2. Tente d'initialiser le client API AdMob (`google-api-python-client`).
+3. Lance une notification locale et ouvre la vidéo si `REWARDED_VIDEO_URL` est définie.
+4. Attend la durée de visionnage.
+5. Demande une validation utilisateur explicite (`share` / `reject`).
+6. Écrit chaque événement dans un journal JSONL horodaté.
+7. Affiche les compteurs et le récapitulatif final.
 
-## Important: vues AdMob “réelles”
+## Limite AdMob importante
 
-Une vue rewarded **réellement comptée par AdMob** ne peut pas être générée par ce script terminal.
-
-Pour qu'AdMob considère la vidéo comme vue, il faut intégrer le SDK Mobile Ads dans une app Android/iOS, charger une rewarded ad, puis laisser les callbacks officiels (`onAdShowedFullScreenContent`, `onUserEarnedReward`, `onAdDismissedFullScreenContent`) piloter le flux côté client mobile.
-
-Ce projet reste donc un simulateur de flux local.
+Les impressions rewarded officiellement comptées par AdMob nécessitent le SDK Mobile Ads Android/iOS. Ce script terminal enregistre des actions utilisateur locales mais ne remplace pas les callbacks SDK mobile (`onUserEarnedReward`, etc.).
